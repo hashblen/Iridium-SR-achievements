@@ -1,0 +1,10 @@
+/build
+/vendor
+
+/data
+/out
+
+.DS_Store
+
+*.pcapng
+*.exe

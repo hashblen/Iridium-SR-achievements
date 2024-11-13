@@ -1,0 +1,8 @@
+{
+  "deviceName" : "\\Device\\NPF_{A699B378-E2BC-47A6-B3F9-538FDBF028D9}",
+  "packetFilter" : [
+    ""
+  ],
+  "autoSavePcapFiles" : true,
+  "autoFindMinimalProto": true
+}
