@@ -47,6 +47,7 @@ var pcapFile *os.File
 
 var packetCounter uint32
 var foundGetQuestDataScRsp bool
+var foundGetGachaTokenScRsp bool
 var deducedPacketIds = make(map[uint16]string)
 
 func openPcap(fileName string) {
@@ -135,6 +136,7 @@ func startSniffer() {
 
 	packetCounter = 0
 	foundGetQuestDataScRsp = false
+	foundGetGachaTokenScRsp = false
 
 	for packet := range packetSource.Packets() {
 		if pcapWriter != nil {
@@ -241,10 +243,8 @@ func handleProtoPacket(data []byte, fromServer bool, timestamp time.Time) {
 				log.Println("Didn't get PlayerGetTokenScRsp, retrying for next packet...")
 				packetCounter = 1
 			}
-		} else if packetCounter >= 3 && !foundGetQuestDataScRsp {
-			if packetId == 971 {
-				log.Println("hmmm")
-			}
+		}
+		if packetCounter >= 3 && !foundGetQuestDataScRsp {
 			err := unkGetQuestDataScRsp(data2)
 			if err == nil {
 				foundGetQuestDataScRsp = true
@@ -254,8 +254,18 @@ func handleProtoPacket(data []byte, fromServer bool, timestamp time.Time) {
 				LoadProto("GetQuestDataScRsp")
 			}
 		}
+		if packetCounter >= 3 && !foundGetGachaTokenScRsp {
+			err := unkGetGachaTokenScRsp(data2)
+			if err == nil {
+				foundGetGachaTokenScRsp = true
+				deducedPacketIds[packetId] = "GetGachaTokenScRsp"
+				packetIdMap[packetId] = "GetGachaTokenScRsp"
+				packetNameMap["GetGachaTokenScRsp"] = packetId
+				LoadProto("GetGachaTokenScRsp")
+			}
+		}
 
-		if len(deducedPacketIds) == 2 {
+		if len(deducedPacketIds) >= 2 && len(deducedPacketIds) <= 3 {
 			writePacketIds(deducedPacketIds)
 		}
 	}

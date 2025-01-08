@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/golang/protobuf/proto"
 	"log"
 	"os"
 	"strconv"
@@ -198,4 +199,44 @@ func unkGetQuestDataScRsp(data []byte) error {
 	writeProto("Quest", questFields, "  enum QuestStatus {\n    QUEST_NONE = 0;\n    QUEST_DOING = 1;\n    QUEST_FINISH = 2;\n    QUEST_CLOSE = 3;\n    QUEST_DELETE = 4;\n  }", "")
 	writeProto("GetQuestDataScRsp", map[int32]string{questListTag: "repeated Quest quest_list"}, "", "import \"Quest.proto\";\n\n")
 	return nil
+}
+
+func unkGetGachaTokenScRsp(data []byte) error {
+	dMsg, err := parseUnkProto(data)
+	if err != nil {
+		log.Println("ParseUnkProto", err)
+		return err
+	}
+	var possibleTokens = make(map[int32]string)
+	tokenFields := make(map[int32]string)
+	containsWebviewGacha := false
+	// Get the unknown fields from the dynamic message
+	unknownFieldTags := dMsg.GetUnknownFields()
+	// Iterate over unknown fields
+	for i := 0; i < len(unknownFieldTags); i++ {
+		tag := unknownFieldTags[i]
+		fields := dMsg.GetUnknownField(tag)
+		field := fields[0]
+		// Check if the field is string that says "webview_gacha"
+		if field.Encoding == proto.WireBytes && string(field.Contents) == "webview_gacha" {
+			containsWebviewGacha = true
+			continue
+		}
+		// Check if the field is string and has a length of 684 bytes (512 bytes when decoded)
+		token := field.Contents
+		if field.Encoding == proto.WireBytes && len(token) == 684 {
+			possibleTokens[tag] = string(token)
+			tokenFields[tag] = "string gacha_token"
+		}
+	}
+	if !containsWebviewGacha || len(possibleTokens) == 0 || len(possibleTokens) > 1 {
+		return errors.New("no tokens found, or no webview_gacha found")
+	}
+	for k := range possibleTokens {
+		writeProto("GetGachaTokenScRsp", map[int32]string{k: "string gacha_token"}, "", "")
+		LoadProto("GetGachaTokenScRsp")
+		log.Println("possibleServerSeeds:", possibleTokens)
+		return nil
+	}
+	return nil // never happens, for the compiler
 }
